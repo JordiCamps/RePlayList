@@ -59,7 +59,7 @@ A modern desktop application for transferring playlists between Spotify and YouT
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/replaylist.git
+   git clone https://github.com/Ahmet-Ozbay/RePlayList.git
    cd replaylist
    ```
 
@@ -358,9 +358,9 @@ This software is provided "as is" without warranty of any kind. The authors are 
 
 ## 📞 Support
 
-- **Issues** - [GitHub Issues](https://github.com/yourusername/replaylist/issues)
-- **Discussions** - [GitHub Discussions](https://github.com/yourusername/replaylist/discussions)
-- **Documentation** - [Wiki](https://github.com/yourusername/replaylist/wiki)
+- **Issues** - [GitHub Issues](https://github.com/Ahmet-Ozbay/RePlayList/issues)
+- **Discussions** - [GitHub Discussions](https://github.com/Ahmet-Ozbay/RePlayList/discussions)
+- **Documentation** - [Wiki](https://github.com/Ahmet-Ozbay/RePlayList/wiki)
 
 ---
 

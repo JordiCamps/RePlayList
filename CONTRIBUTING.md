@@ -47,12 +47,12 @@ Before contributing, ensure you have:
 1. **Fork the repository** on GitHub
 2. **Clone your fork:**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/replaylist.git
+   git clone https://github.com/Ahmet-Ozbay/RePlayList.git
    cd replaylist
    ```
 3. **Add upstream remote:**
    ```bash
-   git remote add upstream https://github.com/ORIGINAL_OWNER/replaylist.git
+   git remote add upstream https://github.com/Ahmet-Ozbay/RePlayList.git
    ```
 
 ## 🛠️ Development Setup
