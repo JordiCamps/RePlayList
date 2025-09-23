@@ -97,6 +97,10 @@ build/
 # Local runtime config
 config.json
 
+# Old/temporary release directories
+release/
+release-desktop/
+
 # IDE files
 .vscode/
 .idea/
