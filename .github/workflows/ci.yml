@@ -26,6 +26,7 @@ jobs:
     - name: Test Python imports
       run: |
         cd backend
+        export CI=true
         python -c "print('Testing basic imports...')"
         python -c "import sys; print(f'Python version: {sys.version}')"
         python -c "import replaylist; print('RePlayList package imported successfully')"

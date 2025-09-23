@@ -7,6 +7,7 @@ typed accessors for app and provider-specific configuration.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -42,6 +43,10 @@ class Config:
     def _load_config(self) -> None:
         """Load configuration from JSON file and validate it."""
         if not self.config_path.exists():
+            # In CI or development, use default config if file doesn't exist
+            if os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
+                self._config_data = self._get_default_config()
+                return
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
@@ -51,6 +56,27 @@ class Config:
         except Exception as exc:  # noqa: BLE001
             raise RuntimeError(f"Failed to load config: {exc}") from exc
         self._validate_config()
+
+    def _get_default_config(self) -> Dict[str, Any]:
+        """Get default configuration for CI/development environments."""
+        return {
+            "spotify": {
+                "client_id": "ci_client_id",
+                "client_secret": "ci_client_secret",
+                "redirect_uri": "http://127.0.0.1:8888/callback"
+            },
+            "youtube": {
+                "client_id": "ci_client_id",
+                "client_secret": "ci_client_secret",
+                "redirect_uri": "http://127.0.0.1:8889/callback"
+            },
+            "app": {
+                "debug": True,
+                "default_transfer_mode": "new_playlist",
+                "http_port": 5000,
+                "log_level": "INFO"
+            }
+        }
 
     def _validate_config(self) -> None:
         """Validate that all required configuration keys are present."""
