@@ -3,6 +3,9 @@
 Desktop application to transfer playlists between Spotify and YouTube Music.
 Frontend: SvelteKit; Desktop wrapper: Tauri (Rust); Backend API: Python (FastAPI).
 
+Below is a comprehensive documentation for people who'd like to contribute, or compile this from the source.
+If you need to quickly use the program; you can download the latest release. Once you configure API credentials (see [API Credentials Setup](#api-credentials-setup)), you'll be good to go.
+
 ## 📋 Table of Contents
 
 - [Features](#-features)
