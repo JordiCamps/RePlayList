@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -35,6 +36,12 @@ class Config:
             # manager.py is at replaylist/config/manager.py → project root is 4 levels up
             project_root = Path(__file__).parents[3]
             config_path = project_root / "config.json"
+            
+            # If running as PyInstaller executable, look in the same directory as the exe
+            if getattr(sys, 'frozen', False):
+                # Running as PyInstaller executable
+                exe_dir = Path(sys.executable).parent
+                config_path = exe_dir / "config.json"
 
         self.config_path = Path(config_path)
         self._config_data: Dict[str, Any] = {}

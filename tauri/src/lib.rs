@@ -41,7 +41,7 @@ pub fn run() {
     #[cfg(not(debug_assertions))]
     let builder = builder.setup(|app| {
         // Spawn bundled backend sidecar only in production builds
-        backend::process::setup_backend_sidecar(app)?;
+        backend::process::setup_backend_sidecar(app.handle())?;
         Ok(())
     });
 
