@@ -1,0 +1,25 @@
+{
+  "name": "replaylist",
+  "version": "1.0.0",
+  "description": "Transfer playlists between Spotify and YouTube",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:tauri": "concurrently \"cd backend && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload\" \"cd frontend && npm run dev\"",
+    "build": "cd frontend && npm run build",
+    "build:backend": "pip install --upgrade pip && pip install -r requirements.txt pyinstaller && pyinstaller backend/pyinstaller.spec --noconfirm",
+    "postbuild:backend": "if not exist tauri\\binaries mkdir tauri\\binaries && copy /Y dist\\replaylist-backend\\replaylist-backend.exe tauri\\binaries\\replaylist-backend.exe",
+    "build:app": "npm run build:backend && cd tauri && npm run tauri build",
+    "install:all": "cd frontend && npm install",
+    "tauri": "cd tauri && npm run tauri",
+    "start:backend": "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port 8000"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "frontend"
+  ]
+}

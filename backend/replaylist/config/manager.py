@@ -1,0 +1,128 @@
+"""Configuration management for RePlayList.
+
+Loads, validates, updates, and saves configuration from a JSON file. Provides
+typed accessors for app and provider-specific configuration.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from .types import AppConfig, SpotifyConfig, YouTubeConfig
+
+
+class Config:
+    """Main configuration class for RePlayList.
+
+    Responsibilities:
+        - Load configuration from JSON on disk
+        - Validate presence of required sections/keys
+        - Expose typed getters for sections
+        - Persist updates with simple deep-merge semantics
+    """
+
+    def __init__(self, config_path: Optional[str] = None):
+        """Initialize configuration.
+
+        Args:
+            config_path: Path to config file. If None, uses project root
+                `config.json`.
+        """
+        if config_path is None:
+            # manager.py is at replaylist/config/manager.py → project root is 4 levels up
+            project_root = Path(__file__).parents[3]
+            config_path = project_root / "config.json"
+
+        self.config_path = Path(config_path)
+        self._config_data: Dict[str, Any] = {}
+        self._load_config()
+
+    def _load_config(self) -> None:
+        """Load configuration from JSON file and validate it."""
+        if not self.config_path.exists():
+            raise FileNotFoundError(f"Config file not found: {self.config_path}")
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                self._config_data = json.load(f)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in config file: {exc}") from exc
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"Failed to load config: {exc}") from exc
+        self._validate_config()
+
+    def _validate_config(self) -> None:
+        """Validate that all required configuration keys are present."""
+        required_keys = {
+            "spotify": ["client_id", "client_secret", "redirect_uri"],
+            "youtube": ["client_id", "client_secret", "redirect_uri"],
+            "app": ["debug", "default_transfer_mode", "http_port", "log_level"],
+        }
+        for section, keys in required_keys.items():
+            if section not in self._config_data:
+                raise ValueError(f"Missing section '{section}' in config")
+            for key in keys:
+                if key not in self._config_data[section]:
+                    raise ValueError(f"Missing key '{key}' in section '{section}'")
+
+    def get_spotify_config(self) -> SpotifyConfig:
+        """Return typed Spotify configuration."""
+        spotify_data = self._config_data["spotify"]
+        return SpotifyConfig(
+            client_id=spotify_data["client_id"],
+            client_secret=spotify_data["client_secret"],
+            redirect_uri=spotify_data["redirect_uri"],
+        )
+
+    def get_youtube_config(self) -> YouTubeConfig:
+        """Return typed YouTube configuration."""
+        youtube_data = self._config_data["youtube"]
+        return YouTubeConfig(
+            client_id=youtube_data["client_id"],
+            client_secret=youtube_data["client_secret"],
+            redirect_uri=youtube_data["redirect_uri"],
+        )
+
+    def get_app_config(self) -> AppConfig:
+        """Return typed application configuration."""
+        app_data = self._config_data["app"]
+        return AppConfig(
+            debug=app_data["debug"],
+            default_transfer_mode=app_data["default_transfer_mode"],
+            http_port=app_data["http_port"],
+            log_level=app_data["log_level"],
+        )
+
+    def update_config(self, updates: Dict[str, Any]) -> None:
+        """Deep-merge the provided updates and validate the result.
+
+        Args:
+            updates: Nested dictionary of changes to apply.
+        """
+
+        def deep_merge(base: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+            result = base.copy()
+            for key, value in incoming.items():
+                if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                    result[key] = deep_merge(result[key], value)
+                else:
+                    result[key] = value
+            return result
+
+        self._config_data = deep_merge(self._config_data, updates)
+        self._validate_config()
+
+    def save_config(self) -> None:
+        """Persist current configuration to disk."""
+        try:
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(self._config_data, f, indent=2, ensure_ascii=False)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"Failed to save config: {exc}") from exc
+
+    def get_config_data(self) -> Dict[str, Any]:
+        """Return a shallow copy of the raw configuration dictionary."""
+        return self._config_data.copy()
+
+

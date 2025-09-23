@@ -1,0 +1,16 @@
+# Core dependencies
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+requests==2.31.0
+
+# Optional dependencies for better performance
+httpx==0.25.2
+python-multipart==0.0.6
+
+# Development dependencies (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
