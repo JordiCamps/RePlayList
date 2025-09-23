@@ -1,8 +1,4 @@
-<p align="left">
-  <img src="frontend/public/static/assets/logo/png/logo_64.png" alt="RePlayList logo" width="64" height="64" style="vertical-align:middle; margin-right:8px;" />
-  <span style="font-size:2rem; font-weight:700; vertical-align:middle;">RePlayList</span>
-  
-</p>
+## <img src="frontend/public/static/assets/logo/svg/logo.svg" alt="RePlayList logo" width="40" height="40" style="vertical-align:middle; margin-right:8px;" /> <span style="font-size:2rem; font-weight:700; vertical-align:middle;">RePlayList</span>
 
 A modern desktop application for transferring playlists between Spotify and YouTube Music. Built with Tauri (Rust + SvelteKit) for native performance and a beautiful user interface.
 
