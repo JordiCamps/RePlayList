@@ -22,6 +22,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tauri desktop application optimization
 - Icon system with multi-resolution support
 
+## [1.0.0] - 2025-09-23
+
+### Highlights
+- First stable release with a portable Windows build (no Python/Rust/Node required).
+- One-file Python backend sidecar bundled with Tauri; reads `config.json` next to the EXE.
+- Crisp app icons generated from SVG with proper multi-layer ICO to fix blurry taskbar icon.
+
+### Added
+- Portable ZIP distribution with `RePlayList.exe` and configuration template.
+- Automatic config discovery for portable and installed setups.
+- Comprehensive accessibility improvements (keyboard nav, ARIA, focus management).
+- Animations and transitions (staggered, responsive) for a smoother UX.
+- Notifications/toasts for errors and status updates.
+
+### Changed
+- Major frontend refactor (SvelteKit) for performance, responsiveness, and maintainability.
+- Tauri structure cleanup and module extraction (commands, backend, utils) adhering to SOLID.
+- Backend config manager updated to prioritize executable directory and CI defaults.
+- CI workflow simplified and made resilient to missing local config via `CI` defaults.
+
+### Fixed
+- Windows taskbar icon blurriness by generating a proper multi-size ICO.
+- PyInstaller `python313.dll` issues by producing a true one-file EXE and adjusting startup.
+- Backend startup import path issues by changing CWD and importing `main.app` directly.
+
+### Notes
+- Place `config.json` next to `RePlayList.exe` (or copy `config.example.json` to `config.json`).
+- Project is not affiliated with Spotify/YouTube; uses their official APIs.
+
 ## [0.1.0] - 2025-09-23
 
 ### Added
@@ -157,6 +186,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **v1.0.0** - First stable, portable Windows release
 - **v0.1.0** - Complete architectural refactoring and modernization
 - **v0.0.1** - Initial development and basic functionality
 
