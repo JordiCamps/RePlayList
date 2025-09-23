@@ -2,6 +2,39 @@
 
 A modern desktop application for transferring playlists between Spotify and YouTube Music. Built with Tauri (Rust + SvelteKit) for native performance and a beautiful user interface.
 
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Running the Application](#running-the-application)
+- [Project Structure](#-project-structure)
+- [Configuration](#-configuration)
+  - [Backend Configuration](#backend-configuration)
+  - [API Credentials Setup](#api-credentials-setup)
+    - [Spotify Setup](#spotify-setup)
+    - [YouTube Setup](#youtube-setup)
+  - [Detailed API Setup Guide](#detailed-api-setup-guide)
+- [Development](#-development)
+  - [Available Scripts](#available-scripts)
+  - [Backend Development](#backend-development)
+  - [Frontend Development](#frontend-development)
+  - [Tauri Development](#tauri-development)
+- [Usage](#-usage)
+  - [Desktop Application](#desktop-application)
+  - [Command Line Interface](#command-line-interface)
+- [Architecture](#-architecture)
+- [Troubleshooting](#-troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Debug Mode](#debug-mode)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Disclaimer](#-disclaimer)
+- [Acknowledgments](#-acknowledgments)
+- [Support](#-support)
+
 ## ✨ Features
 
 - **Cross-Platform Playlist Transfer** - Move playlists between Spotify and YouTube Music
@@ -50,6 +83,8 @@ A modern desktop application for transferring playlists between Spotify and YouT
    # Edit with your API credentials
    nano config.json
    ```
+   
+   **Note:** The app looks for `config.json` in the root directory. You can also edit the configuration through the app's settings interface once it's running.
 
 4. **Run the application:**
    ```bash
@@ -117,17 +152,27 @@ Create `backend/config.json`:
 
 ### API Credentials Setup
 
-#### Spotify Setup:
-1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Create a new app
-3. Add `http://localhost:8888/callback` to Redirect URIs
-4. Copy Client ID and Client Secret
+**📖 For detailed setup instructions, see [API_SETUP.md](API_SETUP.md)**
 
-#### YouTube Setup:
-1. Go to [Google Cloud Console](https://console.developers.google.com/)
-2. Enable YouTube Data API v3
-3. Create credentials (API Key)
-4. Restrict the key to YouTube Data API v3
+#### Quick Setup:
+1. **Spotify**: Create app at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. **YouTube**: Enable YouTube Data API v3 at [Google Cloud Console](https://console.developers.google.com/)
+3. **Configuration**: Copy `config.example.json` to `config.json` and add your credentials
+
+#### Important Notes:
+- **YouTube API**: Requires additional setup (test users, OAuth consent screen)
+- **Redirect URIs**: Must match exactly in both app and configuration
+- **Security**: Never commit your `config.json` file
+
+### Detailed API Setup Guide
+
+For comprehensive step-by-step instructions including:
+- **Spotify API setup** with redirect URI configuration
+- **YouTube API setup** with OAuth consent screen and test users
+- **Troubleshooting common issues**
+- **Security best practices**
+
+See [API_SETUP.md](API_SETUP.md) for the complete guide.
 
 ## 🛠️ Development
 
