@@ -80,6 +80,22 @@ tauri/target/
 tauri/dist/
 tauri/src-tauri/target/
 tauri/binaries/
+tauri/target/**
+tauri/binaries/**
+tauri/target/release/**
+tauri/target/debug/**
+
+# Windows installer bundles
+tauri/target/release/bundle/**
+tauri/target/debug/bundle/**
+
+# Backend build outputs
+dist/
+build/
+*.spec
+
+# Local runtime config
+config.json
 
 # IDE files
 .vscode/

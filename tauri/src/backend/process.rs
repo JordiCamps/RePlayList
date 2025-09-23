@@ -10,12 +10,13 @@
 /// 
 /// # Returns
 /// Result indicating success or failure
-pub fn setup_backend_sidecar(app: &tauri::AppHandle) -> Result<(), String> {
+pub fn setup_backend_sidecar(app: &mut tauri::App) -> Result<(), String> {
     use tauri_plugin_shell::ShellExt;
-    
+
     // Spawn bundled backend sidecar only in production builds
     let spawn_result = {
-        let shell = app.shell();
+        let handle = app.handle();
+        let shell = handle.shell();
         shell.sidecar("replaylist-backend").and_then(|cmd| cmd.spawn())
     };
 

@@ -40,8 +40,12 @@ pub fn run() {
 
     #[cfg(not(debug_assertions))]
     let builder = builder.setup(|app| {
+        // Ensure config.json exists
+        if let Err(err) = utils::ensure_config_file_next_to_exe() {
+            eprintln!("[setup] Failed to ensure config.json: {}", err);
+        }
         // Spawn bundled backend sidecar only in production builds
-        backend::process::setup_backend_sidecar(app.handle())?;
+        backend::process::setup_backend_sidecar(app)?;
         Ok(())
     });
 
