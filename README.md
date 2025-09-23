@@ -30,6 +30,7 @@ A modern desktop application for transferring playlists between Spotify and YouT
   - [Common Issues](#common-issues)
   - [Debug Mode](#debug-mode)
 - [Contributing](#-contributing)
+- [Security](#-security)
 - [License](#-license)
 - [Disclaimer](#-disclaimer)
 - [Acknowledgments](#-acknowledgments)
@@ -337,6 +338,10 @@ Enable debug logging:
 - Update documentation as needed
 - Use conventional commit messages
 - Ensure all checks pass before submitting PR
+
+## 🔒 Security
+
+For security vulnerabilities, please see our [Security Policy](SECURITY.md).
 
 ## 📄 License
 
