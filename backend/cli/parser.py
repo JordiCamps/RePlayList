@@ -99,8 +99,16 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help='Transfer mode'
     )
     transfer_parser.add_argument(
-        '--name', 
+        '--name',
         help='Custom name for new playlist (only for new_playlist mode)'
+    )
+    transfer_parser.add_argument(
+        '--source-account',
+        help='Source account id to read from (defaults to the active account)'
+    )
+    transfer_parser.add_argument(
+        '--target-account',
+        help='Target account id to write to (defaults to the active account)'
     )
     
     # Accounts command
@@ -130,6 +138,10 @@ def create_argument_parser() -> argparse.ArgumentParser:
         choices=['spotify', 'youtube'],
         help='Platform to extract'
     )
+    extract_parser.add_argument(
+        '--account',
+        help='Account id to extract (defaults to the active account)'
+    )
 
     # Update command
     update_parser = subparsers.add_parser(
@@ -139,6 +151,10 @@ def create_argument_parser() -> argparse.ArgumentParser:
         'platform',
         choices=['spotify', 'youtube'],
         help='Platform to update'
+    )
+    update_parser.add_argument(
+        '--account',
+        help='Account id to update (defaults to the active account)'
     )
 
     # YouTube account-to-account copy command
@@ -222,7 +238,9 @@ def execute_command(args: argparse.Namespace) -> None:
                 args.target_platform,
                 args.target_playlist_id,
                 args.mode,
-                args.name
+                args.name,
+                args.source_account,
+                args.target_account
             )
         
         elif args.command == 'accounts':
@@ -232,10 +250,10 @@ def execute_command(args: argparse.Namespace) -> None:
             cli.use_account(args.platform, args.account_id)
 
         elif args.command == 'extract':
-            cli.extract_library(args.platform)
+            cli.extract_library(args.platform, args.account)
 
         elif args.command == 'update':
-            cli.update_library(args.platform)
+            cli.update_library(args.platform, args.account)
 
         elif args.command == 'yt-copy':
             cli.copy_youtube_account(

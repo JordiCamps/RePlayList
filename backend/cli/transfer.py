@@ -33,7 +33,9 @@ class TransferHandler:
         source_playlist_id: str,
         target_platform: str,
         target_playlist_id: Optional[str] = None,
-        mode: str = "new_playlist"
+        mode: str = "new_playlist",
+        source_account: Optional[str] = None,
+        target_account: Optional[str] = None
     ) -> None:
         """
         Preview what will be transferred between platforms.
@@ -64,12 +66,14 @@ class TransferHandler:
             Estimated Failures: 5
         """
         try:
-            # Check authentication for both platforms
-            self._check_authentication(source_platform, target_platform)
-            
-            # Create transfer manager
-            transfer_manager = self._create_transfer_manager()
-            
+            # Check authentication for the specified (or active) accounts
+            self._check_authentication(source_platform, target_platform, source_account, target_account)
+
+            # Create transfer manager bound to the chosen accounts
+            transfer_manager = self._create_transfer_manager(
+                source_platform, target_platform, source_account, target_account
+            )
+
             print(f"Previewing transfer from {source_platform} to {target_platform}...")
             print(f"Mode: {mode}")
             print()
@@ -97,7 +101,9 @@ class TransferHandler:
         target_platform: str,
         target_playlist_id: Optional[str] = None,
         mode: str = "new_playlist",
-        custom_name: Optional[str] = None
+        custom_name: Optional[str] = None,
+        source_account: Optional[str] = None,
+        target_account: Optional[str] = None
     ) -> None:
         """
         Transfer a playlist between platforms.
@@ -128,12 +134,14 @@ class TransferHandler:
             Current: Bohemian Rhapsody - Queen
         """
         try:
-            # Check authentication for both platforms
-            self._check_authentication(source_platform, target_platform)
-            
-            # Create transfer manager
-            transfer_manager = self._create_transfer_manager()
-            
+            # Check authentication for the specified (or active) accounts
+            self._check_authentication(source_platform, target_platform, source_account, target_account)
+
+            # Create transfer manager bound to the chosen accounts
+            transfer_manager = self._create_transfer_manager(
+                source_platform, target_platform, source_account, target_account
+            )
+
             print(f"Starting transfer from {source_platform} to {target_platform}...")
             print(f"Mode: {mode}")
             
@@ -163,39 +171,55 @@ class TransferHandler:
         except Exception as e:
             print(f"Transfer error: {e}")
     
-    def _check_authentication(self, source_platform: str, target_platform: str) -> None:
+    def _check_authentication(
+        self,
+        source_platform: str,
+        target_platform: str,
+        source_account: Optional[str] = None,
+        target_account: Optional[str] = None,
+    ) -> None:
         """
-        Check authentication for both source and target platforms.
-        
+        Check that tokens exist for the chosen source/target accounts.
+
         Args:
             source_platform: Source platform name
             target_platform: Target platform name
-            
+            source_account: Source-platform account id (None = active)
+            target_account: Target-platform account id (None = active)
+
         Raises:
-            Exception: If authentication is missing for any required platform
+            Exception: If a required token is missing
         """
-        if source_platform.lower() == 'spotify' and not self.auth_handler.is_authenticated('spotify'):
-            raise Exception("Not authenticated with Spotify.")
-        
-        if target_platform.lower() == 'spotify' and not self.auth_handler.is_authenticated('spotify'):
-            raise Exception("Not authenticated with Spotify.")
-        
-        if source_platform.lower() == 'youtube' and not self.auth_handler.is_authenticated('youtube'):
-            raise Exception("Not authenticated with YouTube.")
-        
-        if target_platform.lower() == 'youtube' and not self.auth_handler.is_authenticated('youtube'):
-            raise Exception("Not authenticated with YouTube.")
-    
-    def _create_transfer_manager(self) -> PlaylistTransfer:
+        if not self.config.get_token(source_platform, source_account):
+            who = source_account or "active"
+            raise Exception(f"Not authenticated with {source_platform} (account '{who}').")
+        if not self.config.get_token(target_platform, target_account):
+            who = target_account or "active"
+            raise Exception(f"Not authenticated with {target_platform} (account '{who}').")
+
+    def _create_transfer_manager(
+        self,
+        source_platform: str,
+        target_platform: str,
+        source_account: Optional[str] = None,
+        target_account: Optional[str] = None,
+    ) -> PlaylistTransfer:
         """
-        Create a PlaylistTransfer instance with current tokens.
-        
+        Create a PlaylistTransfer bound to the chosen source/target accounts.
+
+        Resolves the Spotify and YouTube access tokens from whichever side
+        (source/target) maps to each platform.
+
         Returns:
             Configured PlaylistTransfer instance
         """
+        tokens = {
+            source_platform.lower(): self.config.get_token(source_platform, source_account),
+            target_platform.lower(): self.config.get_token(target_platform, target_account),
+        }
         return PlaylistTransfer(
-            self.config.spotify_token or "dummy",
-            self.config.youtube_token or "dummy"
+            tokens.get("spotify") or "dummy",
+            tokens.get("youtube") or "dummy",
         )
     
     def _validate_playlist_name(self, transfer_manager: PlaylistTransfer, name: str, platform: str) -> None:

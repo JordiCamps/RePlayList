@@ -177,14 +177,16 @@ class RePlayListCLI:
         target_platform: str,
         target_playlist_id: Optional[str] = None,
         mode: str = 'new_playlist',
-        custom_name: Optional[str] = None
+        custom_name: Optional[str] = None,
+        source_account: Optional[str] = None,
+        target_account: Optional[str] = None
     ) -> None:
         """
         Transfer a playlist from source to target platform.
-        
+
         Performs the actual transfer operation, creating a new playlist
         or appending to an existing one based on the specified mode.
-        
+
         Args:
             source_platform: Source platform name ('spotify' or 'youtube')
             source_playlist_id: Source playlist identifier
@@ -192,13 +194,15 @@ class RePlayListCLI:
             target_playlist_id: Target playlist ID for append mode
             mode: Transfer mode ('new_playlist' or 'append')
             custom_name: Custom name for new playlist (new_playlist mode only)
-            
+            source_account: Source-platform account id (defaults to active)
+            target_account: Target-platform account id (defaults to active)
+
         Raises:
             Exception: If authentication fails or transfer fails
         """
         self.transfer_handler.transfer_playlist(
             source_platform, source_playlist_id, target_platform,
-            target_playlist_id, mode, custom_name
+            target_playlist_id, mode, custom_name, source_account, target_account
         )
     
     def list_accounts(self, platform: Optional[str] = None) -> None:
@@ -311,20 +315,21 @@ class RePlayListCLI:
         except Exception as e:  # noqa: BLE001
             print(f"Error copying playlist: {e}")
 
-    def extract_library(self, platform: str) -> None:
+    def extract_library(self, platform: str, account: Optional[str] = None) -> None:
         """
         Extract all playlists and their tracks for a platform into local storage.
 
-        Downloads the authenticated account's full library (playlists + tracks)
-        and saves it as JSON under data/<platform>/<account_id>/. Reading is
-        cheap on quota, so this can be run freely.
+        Downloads the account's full library (playlists + tracks) and saves it
+        as JSON under data/<platform>/<account_id>/. Reading is cheap on quota,
+        so this can be run freely.
 
         Args:
             platform: Platform name ('spotify' or 'youtube')
+            account: Account id to extract (defaults to the active account)
         """
-        self.store_handler.extract(platform)
+        self.store_handler.extract(platform, account)
 
-    def update_library(self, platform: str) -> None:
+    def update_library(self, platform: str, account: Optional[str] = None) -> None:
         """
         Incrementally update the local library for a platform.
 
@@ -334,8 +339,9 @@ class RePlayListCLI:
 
         Args:
             platform: Platform name ('spotify' or 'youtube')
+            account: Account id to update (defaults to the active account)
         """
-        self.store_handler.update(platform)
+        self.store_handler.update(platform, account)
 
     def search_tracks(self, platform: str, query: str) -> None:
         """

@@ -15,25 +15,24 @@ class StoreHandler:
         self.config = config
         self.auth_handler = AuthHandler(config)
 
-    def _build_extractor(self, platform: str):
-        """Return a LibraryExtractor for an authenticated platform, or None."""
+    def _build_extractor(self, platform: str, account_id=None):
+        """Return a LibraryExtractor for a platform account, or None."""
         platform = platform.lower()
+        token = self.config.get_token(platform, account_id)
+        if not token:
+            who = account_id or "active"
+            print(f"No {platform} token for account '{who}'. Run 'auth {platform}' or check 'accounts'.")
+            return None
         if platform == "spotify":
-            if not self.auth_handler.is_authenticated("spotify"):
-                print("Not authenticated with Spotify. Run 'auth spotify' first.")
-                return None
-            return LibraryExtractor(spotify_api=SpotifyAPI(self.config.spotify_token))
+            return LibraryExtractor(spotify_api=SpotifyAPI(token))
         if platform == "youtube":
-            if not self.auth_handler.is_authenticated("youtube"):
-                print("Not authenticated with YouTube. Run 'auth youtube' first.")
-                return None
-            return LibraryExtractor(youtube_api=YouTubeAPI(self.config.youtube_token))
+            return LibraryExtractor(youtube_api=YouTubeAPI(token))
         print(f"Unsupported platform: {platform}")
         return None
 
-    def extract(self, platform: str) -> None:
-        """Fully extract all playlists and tracks for the authenticated account."""
-        extractor = self._build_extractor(platform)
+    def extract(self, platform: str, account_id=None) -> None:
+        """Fully extract all playlists and tracks for an account."""
+        extractor = self._build_extractor(platform, account_id)
         if not extractor:
             return
         try:
@@ -50,9 +49,9 @@ class StoreHandler:
         except Exception as e:  # noqa: BLE001
             print(f"Error extracting library: {e}")
 
-    def update(self, platform: str) -> None:
+    def update(self, platform: str, account_id=None) -> None:
         """Incrementally update the local library, re-fetching only what changed."""
-        extractor = self._build_extractor(platform)
+        extractor = self._build_extractor(platform, account_id)
         if not extractor:
             return
         try:
