@@ -315,6 +315,63 @@ class RePlayListCLI:
         except Exception as e:  # noqa: BLE001
             print(f"Error copying playlist: {e}")
 
+    def migrate_spotify_to_youtube(
+        self,
+        source_account: str,
+        target_account: str,
+        limit: int = 60,
+    ) -> None:
+        """
+        Migrate all Spotify playlists to a YouTube account, in resumable batches.
+
+        Reads the source from the local Spotify extract, processes up to `limit`
+        tracks per run (to stay within YouTube quota), and persists progress so
+        repeated daily runs continue where they left off without redoing work.
+
+        Args:
+            source_account: Spotify account id (must have been extracted).
+            target_account: YouTube account id (target channel).
+            limit: Max tracks to process this run (default 60 ~= 9,000 quota units).
+        """
+        from replaylist.spotify import SpotifyAPI
+        from replaylist.youtube import YouTubeAPI
+        from replaylist.transfer import SpotifyToYouTubeMigrator
+
+        spotify_token = self.config.get_token('spotify', source_account)
+        youtube_token = self.config.get_token('youtube', target_account)
+        if not spotify_token:
+            print(f"No Spotify token for account '{source_account}'. Run 'auth spotify' / check 'accounts'.")
+            return
+        if not youtube_token:
+            print(f"No YouTube token for account '{target_account}'. Run 'auth youtube' / check 'accounts'.")
+            return
+
+        migrator = SpotifyToYouTubeMigrator(
+            SpotifyAPI(spotify_token), YouTubeAPI(youtube_token), source_account, target_account
+        )
+        try:
+            print(f"Migrating Spotify ({source_account}) -> YouTube ({target_account}), up to {limit} tracks.")
+            print("Note: ~150 YouTube quota units per track (10,000/day).")
+            result = migrator.run(track_budget=limit, progress=lambda m: print(f"  {m}"))
+            print(
+                f"\nThis run: {result['processed']} processed, {result['added']} added, "
+                f"{result['failed']} unmatched/failed."
+            )
+            print(
+                f"Overall: {result['total_done']}/{result['total_tracks']} tracks done, "
+                f"{result['remaining']} remaining."
+            )
+            if result['quota_hit']:
+                print("Stopped early: YouTube quota exhausted. Run again tomorrow to continue.")
+            elif result['remaining'] > 0:
+                print("Run 'migrate' again (tomorrow, for quota) to continue where it left off.")
+            else:
+                print("Migration complete! All tracks processed.")
+        except FileNotFoundError as e:
+            print(f"{e}")
+        except Exception as e:  # noqa: BLE001
+            print(f"Error during migration: {e}")
+
     def extract_library(self, platform: str, account: Optional[str] = None) -> None:
         """
         Extract all playlists and their tracks for a platform into local storage.

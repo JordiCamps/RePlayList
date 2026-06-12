@@ -157,6 +157,17 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help='Account id to update (defaults to the active account)'
     )
 
+    # Migrate command (all Spotify playlists -> YouTube, resumable batches)
+    migrate_parser = subparsers.add_parser(
+        'migrate', help='Migrate all Spotify playlists to YouTube in resumable, quota-budgeted batches'
+    )
+    migrate_parser.add_argument('--source-account', required=True,
+                                help='Spotify account id (must be extracted first)')
+    migrate_parser.add_argument('--target-account', required=True,
+                                help='Target YouTube account id')
+    migrate_parser.add_argument('--limit', type=int, default=60,
+                                help='Max tracks to process this run (default 60 ~= 9,000 quota units)')
+
     # YouTube account-to-account copy command
     ytcopy_parser = subparsers.add_parser(
         'yt-copy', help='Copy a playlist between two YouTube accounts'
@@ -254,6 +265,11 @@ def execute_command(args: argparse.Namespace) -> None:
 
         elif args.command == 'update':
             cli.update_library(args.platform, args.account)
+
+        elif args.command == 'migrate':
+            cli.migrate_spotify_to_youtube(
+                args.source_account, args.target_account, args.limit
+            )
 
         elif args.command == 'yt-copy':
             cli.copy_youtube_account(

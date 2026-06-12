@@ -7,6 +7,7 @@ from .naming import PlaylistNamer
 from .executor import TransferExecutor
 from .transfer import PlaylistTransfer
 from .yt_copy import YouTubeAccountCopier
+from .migrate import SpotifyToYouTubeMigrator
 
 __all__ = [
     "TransferStatus",
@@ -18,6 +19,7 @@ __all__ = [
     "TransferExecutor",
     "PlaylistTransfer",
     "YouTubeAccountCopier",
+    "SpotifyToYouTubeMigrator",
 ]
 
 
