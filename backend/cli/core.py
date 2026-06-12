@@ -258,6 +258,59 @@ class RePlayListCLI:
         else:
             print(f"No stored {platform} account with id '{account_id}'. Run 'accounts' to list them.")
 
+    def copy_youtube_account(
+        self,
+        from_account: str,
+        to_account: str,
+        source_playlist_id: str,
+        target_name: Optional[str] = None,
+        target_playlist_id: Optional[str] = None,
+    ) -> None:
+        """
+        Copy a playlist between two YouTube accounts (direct video-id copy).
+
+        Args:
+            from_account: Source YouTube account id (see 'accounts').
+            to_account: Target YouTube account id.
+            source_playlist_id: Playlist id on the source account.
+            target_name: Optional title for the new target playlist.
+            target_playlist_id: Optional existing target playlist to append into.
+        """
+        from replaylist.youtube import YouTubeAPI
+        from replaylist.transfer import YouTubeAccountCopier
+
+        source_token = self.config.get_token('youtube', from_account)
+        target_token = self.config.get_token('youtube', to_account)
+        if not source_token:
+            print(f"No stored YouTube token for source account '{from_account}'. Run 'accounts'.")
+            return
+        if not target_token:
+            print(f"No stored YouTube token for target account '{to_account}'. Run 'accounts'.")
+            return
+        if from_account == to_account:
+            print("Source and target accounts are the same; nothing to do.")
+            return
+
+        copier = YouTubeAccountCopier(
+            YouTubeAPI(source_token), YouTubeAPI(target_token), source_account_id=from_account
+        )
+        try:
+            print(f"Copying playlist {source_playlist_id}: {from_account} -> {to_account}")
+            print("Note: adding videos consumes ~50 YouTube quota units each (10,000/day).")
+            result = copier.copy_playlist(
+                source_playlist_id,
+                target_name=target_name,
+                target_playlist_id=target_playlist_id,
+                progress=lambda m: print(f"  {m}"),
+            )
+            print(
+                f"\nDone: '{result['source_name']}' -> '{result['target_title']}' "
+                f"({result['target_playlist_id']})"
+            )
+            print(f"  {result['added']}/{result['total']} videos added, {result['failed']} failed.")
+        except Exception as e:  # noqa: BLE001
+            print(f"Error copying playlist: {e}")
+
     def extract_library(self, platform: str) -> None:
         """
         Extract all playlists and their tracks for a platform into local storage.

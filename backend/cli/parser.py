@@ -141,6 +141,21 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help='Platform to update'
     )
 
+    # YouTube account-to-account copy command
+    ytcopy_parser = subparsers.add_parser(
+        'yt-copy', help='Copy a playlist between two YouTube accounts'
+    )
+    ytcopy_parser.add_argument('--from', dest='from_account', required=True,
+                               help='Source YouTube account id (see "accounts")')
+    ytcopy_parser.add_argument('--to', dest='to_account', required=True,
+                               help='Target YouTube account id')
+    ytcopy_parser.add_argument('--playlist', dest='source_playlist_id', required=True,
+                               help='Source playlist id')
+    ytcopy_parser.add_argument('--name', dest='target_name',
+                               help='Title for the new target playlist')
+    ytcopy_parser.add_argument('--target-playlist-id', dest='target_playlist_id',
+                               help='Append into this existing target playlist instead of creating one')
+
     # Search command
     search_parser = subparsers.add_parser('search', help='Search for tracks')
     search_parser.add_argument(
@@ -221,6 +236,15 @@ def execute_command(args: argparse.Namespace) -> None:
 
         elif args.command == 'update':
             cli.update_library(args.platform)
+
+        elif args.command == 'yt-copy':
+            cli.copy_youtube_account(
+                args.from_account,
+                args.to_account,
+                args.source_playlist_id,
+                args.target_name,
+                args.target_playlist_id,
+            )
 
         elif args.command == 'search':
             cli.search_tracks(args.platform, args.query)

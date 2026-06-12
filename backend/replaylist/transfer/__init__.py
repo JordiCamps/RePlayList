@@ -6,16 +6,18 @@ from .playlist import PlaylistManager
 from .naming import PlaylistNamer
 from .executor import TransferExecutor
 from .transfer import PlaylistTransfer
+from .yt_copy import YouTubeAccountCopier
 
 __all__ = [
-    "TransferStatus", 
-    "TransferProgress", 
+    "TransferStatus",
+    "TransferProgress",
     "TransferResult",
     "TrackMatcher",
-    "PlaylistManager", 
+    "PlaylistManager",
     "PlaylistNamer",
     "TransferExecutor",
-    "PlaylistTransfer"
+    "PlaylistTransfer",
+    "YouTubeAccountCopier",
 ]
 
 
