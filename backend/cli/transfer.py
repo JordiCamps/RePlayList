@@ -147,7 +147,7 @@ class TransferHandler:
             
             # Validate playlist name if provided
             if custom_name:
-                self._validate_playlist_name(transfer_manager, custom_name, target_platform)
+                self._validate_playlist_name(custom_name, target_platform)
             
             # Start transfer
             transfer_id = transfer_manager.start_transfer(
@@ -222,20 +222,20 @@ class TransferHandler:
             tokens.get("youtube") or "dummy",
         )
     
-    def _validate_playlist_name(self, transfer_manager: PlaylistTransfer, name: str, platform: str) -> None:
+    def _validate_playlist_name(self, name: str, platform: str) -> None:
         """
-        Validate and sanitize playlist name.
-        
+        Validate and sanitize a playlist name using PlaylistNamer.
+
         Args:
-            transfer_manager: Transfer manager instance
             name: Playlist name to validate
             platform: Target platform
-            
+
         Raises:
             ValueError: If playlist name is invalid
         """
         try:
-            validated_name = transfer_manager._validate_and_sanitize_playlist_name(name, platform)
+            from replaylist.transfer import PlaylistNamer
+            validated_name = PlaylistNamer().validate_and_sanitize_playlist_name(name, platform)
             if validated_name != name:
                 print(f"⚠️  Playlist name sanitized: '{name}' → '{validated_name}'")
         except ValueError as e:
