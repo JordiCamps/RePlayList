@@ -47,7 +47,9 @@ class YouTubeAuth:
             "scope": " ".join(self.scopes),
             "state": state,
             "access_type": "offline",
-            "prompt": "consent",
+            # select_account lets the user pick which Google account to use,
+            # which is required to authenticate multiple YouTube accounts.
+            "prompt": "select_account consent",
         }
 
         return f"{self.AUTH_URL}?{urlencode(params)}"
