@@ -46,35 +46,55 @@ class AuthHandler:
         try:
             print(f"Starting authentication with {platform}...")
             result = auth_manager.authenticate_platform(platform)
-            
+
             if result.success:
-                print(f"Successfully authenticated with {platform}")
-                self._store_token(platform, result.access_token)
+                account_id, display_name = self._resolve_identity(platform, result.access_token)
+                self.config.add_account(
+                    platform,
+                    account_id,
+                    access_token=result.access_token,
+                    refresh_token=result.refresh_token,
+                    expires_in=result.expires_in,
+                    display_name=display_name,
+                )
                 save_callback()
+                print(f"Successfully authenticated with {platform} as {display_name} ({account_id})")
                 return True
             else:
                 print(f"Authentication failed: {result.error}")
                 return False
-                
+
         except Exception as e:
             print(f"Authentication error: {e}")
             return False
-    
-    def _store_token(self, platform: str, token: Optional[str]) -> None:
+
+    def _resolve_identity(self, platform: str, token: Optional[str]) -> tuple:
         """
-        Store authentication token for the specified platform.
-        
-        Updates the configuration with the new token for the given platform.
-        This is an internal method used after successful authentication.
-        
+        Resolve the service account identity for a freshly obtained token.
+
+        Used to key stored tokens by account so multiple accounts per platform
+        can coexist.
+
         Args:
             platform: Platform name ('spotify' or 'youtube')
-            token: Access token to store
+            token: Access token just obtained
+
+        Returns:
+            Tuple of (account_id, display_name). Falls back to ('default', ...)
+            if the identity cannot be resolved.
         """
-        if platform.lower() == 'spotify':
-            self.config.spotify_token = token
-        elif platform.lower() == 'youtube':
-            self.config.youtube_token = token
+        try:
+            if platform.lower() == 'spotify':
+                from replaylist.spotify import SpotifyAPI
+                me = SpotifyAPI(token).get_user_info()
+                return me.get('id') or 'default', (me.get('display_name') or me.get('id') or 'default')
+            else:
+                from replaylist.youtube import YouTubeAPI
+                channel = YouTubeAPI(token).get_user_info()
+                return channel.get('id') or 'default', channel.get('snippet', {}).get('title', '') or 'default'
+        except Exception as e:  # noqa: BLE001
+            print(f"Warning: could not resolve account identity ({e}); storing as 'default'.")
+            return 'default', 'default'
     
     def get_token(self, platform: str) -> Optional[str]:
         """

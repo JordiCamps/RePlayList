@@ -1,6 +1,10 @@
 # Sensitive Configuration Files
 config.json
+tokens.json
 *.env
+
+# Extracted local library data
+data/
 .env.local
 .env.development.local
 .env.test.local

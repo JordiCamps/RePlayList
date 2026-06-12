@@ -310,7 +310,7 @@ class YouTubeAPI:
 
     def get_user_info(self) -> Dict[str, Any]:
         """Get profile/channel info of the authenticated user."""
-        params = {"part": "snippet"}
+        params = {"part": "snippet", "mine": "true"}
         data = self._make_request("GET", "/channels", params=params)
         if data.get("items"):
             return data["items"][0]

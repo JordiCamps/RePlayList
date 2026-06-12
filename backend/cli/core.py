@@ -17,6 +17,7 @@ from .auth import AuthHandler
 from .playlists import PlaylistHandler
 from .transfer import TransferHandler
 from .search import SearchHandler
+from .store import StoreHandler
 
 
 logger = setup_logging()
@@ -46,6 +47,7 @@ class RePlayListCLI:
         self.playlist_handler = PlaylistHandler(self.config)
         self.transfer_handler = TransferHandler(self.config)
         self.search_handler = SearchHandler(self.config)
+        self.store_handler = StoreHandler(self.config)
     
     def _load_tokens(self) -> None:
         """
@@ -199,6 +201,89 @@ class RePlayListCLI:
             target_playlist_id, mode, custom_name
         )
     
+    def list_accounts(self, platform: Optional[str] = None) -> None:
+        """
+        List stored accounts per platform, marking the active one.
+
+        Args:
+            platform: Optional platform to filter ('spotify' or 'youtube').
+        """
+        from replaylist.store import list_extracted_accounts
+
+        platforms = [platform] if platform else list(self.config.PLATFORMS)
+        for plat in platforms:
+            token_accounts = self.config.list_accounts(plat)
+            extracted = list_extracted_accounts(plat)
+            active = self.config.get_active(plat)
+            # Union of authenticated accounts and locally-extracted libraries,
+            # preserving order (tokens first).
+            account_ids = list(dict.fromkeys(list(token_accounts) + list(extracted)))
+
+            print(f"\n{plat.upper()} ({len(account_ids)} account(s)):")
+            if not account_ids:
+                print("  (none - run 'auth' to add one)")
+                continue
+
+            for account_id in account_ids:
+                token_info = token_accounts.get(account_id, {})
+                stats = extracted.get(account_id)
+                name = (
+                    token_info.get("display_name")
+                    or (stats or {}).get("display_name")
+                    or account_id
+                )
+                marker = "*" if account_id == active else " "
+                auth_state = "authenticated" if account_id in token_accounts else "no token"
+                if stats:
+                    updated = (stats.get("updated_at") or "")[:10] or "?"
+                    library = f"{stats['playlists']} playlists, {stats['tracks']} tracks (updated {updated})"
+                else:
+                    library = "not extracted"
+                print(f"  {marker} {name} [{account_id}]")
+                print(f"      {auth_state}; {library}")
+
+        print("\n(* = active account; switch with 'use <platform> <account_id>')")
+
+    def use_account(self, platform: str, account_id: str) -> None:
+        """
+        Set the active account for a platform.
+
+        Args:
+            platform: Platform name ('spotify' or 'youtube')
+            account_id: Account id to activate (see 'accounts')
+        """
+        if self.config.set_active(platform, account_id):
+            self._save_tokens()
+            print(f"Active {platform} account set to {account_id}.")
+        else:
+            print(f"No stored {platform} account with id '{account_id}'. Run 'accounts' to list them.")
+
+    def extract_library(self, platform: str) -> None:
+        """
+        Extract all playlists and their tracks for a platform into local storage.
+
+        Downloads the authenticated account's full library (playlists + tracks)
+        and saves it as JSON under data/<platform>/<account_id>/. Reading is
+        cheap on quota, so this can be run freely.
+
+        Args:
+            platform: Platform name ('spotify' or 'youtube')
+        """
+        self.store_handler.extract(platform)
+
+    def update_library(self, platform: str) -> None:
+        """
+        Incrementally update the local library for a platform.
+
+        Re-fetches tracks only for playlists that are new or have changed since
+        the last extract (Spotify via snapshot_id, YouTube via item count),
+        leaving unchanged playlists untouched.
+
+        Args:
+            platform: Platform name ('spotify' or 'youtube')
+        """
+        self.store_handler.update(platform)
+
     def search_tracks(self, platform: str, query: str) -> None:
         """
         Search for tracks on the specified platform.

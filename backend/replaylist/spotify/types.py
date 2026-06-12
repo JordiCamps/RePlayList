@@ -43,6 +43,9 @@ class SpotifyPlaylist:
         tracks_count: Number of tracks.
         public: Whether the playlist is public.
         external_urls: Mapping of provider name to URL.
+        snapshot_id: Spotify playlist version identifier; changes whenever the
+            playlist is modified. Used for incremental sync. May be None when
+            not provided by the API response.
     """
 
     id: str
@@ -52,5 +55,7 @@ class SpotifyPlaylist:
     tracks_count: int
     public: bool
     external_urls: Dict[str, str]
+    snapshot_id: Optional[str] = None
+    owner_id: str = ""
 
 

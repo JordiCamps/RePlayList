@@ -95,15 +95,21 @@ class SpotifyAPI:
         data = self._make_request("GET", "/me/playlists", params=params)
         playlists: List[SpotifyPlaylist] = []
         for item in data.get("items", []):
+            if not item:
+                continue
+            owner = item.get("owner") or {}
+            tracks = item.get("tracks") or {}
             playlists.append(
                 SpotifyPlaylist(
                     id=item["id"],
-                    name=item["name"],
+                    name=item.get("name", ""),
                     description=item.get("description", ""),
-                    owner=item["owner"]["display_name"],
-                    tracks_count=item["tracks"]["total"],
-                    public=item["public"],
-                    external_urls=item["external_urls"],
+                    owner=owner.get("display_name", ""),
+                    tracks_count=tracks.get("total", 0),
+                    public=bool(item.get("public")),
+                    external_urls=item.get("external_urls", {}),
+                    snapshot_id=item.get("snapshot_id"),
+                    owner_id=owner.get("id", ""),
                 )
             )
         return playlists
@@ -152,23 +158,35 @@ class SpotifyAPI:
         Returns:
             A list of tracks for the page (may be empty at end of collection).
         """
-        params = {"limit": limit, "offset": offset, "fields": "items(track(id,name,artists,album,duration_ms,external_urls,preview_url))"}
-        data = self._make_request("GET", f"/playlists/{playlist_id}/tracks", params=params)
+        # Spotify restricted the legacy `/playlists/{id}/tracks` endpoint
+        # (returns 403). The current endpoint is `/playlists/{id}/items`, where
+        # each row holds the track under the `item` key (not `track`).
+        params = {
+            "limit": limit,
+            "offset": offset,
+            "fields": "items(item(id,name,type,artists,album,duration_ms,external_urls,preview_url))",
+        }
+        data = self._make_request("GET", f"/playlists/{playlist_id}/items", params=params)
         tracks: List[SpotifyTrack] = []
         for item in data.get("items", []):
-            track_data = item.get("track")
-            if track_data and track_data.get("id"):
-                tracks.append(
-                    SpotifyTrack(
-                        id=track_data["id"],
-                        name=track_data["name"],
-                        artists=[artist["name"] for artist in track_data["artists"]],
-                        album=track_data["album"]["name"],
-                        duration_ms=track_data["duration_ms"],
-                        external_urls=track_data["external_urls"],
-                        preview_url=track_data.get("preview_url"),
-                    )
+            track_data = item.get("item")
+            if not track_data or not track_data.get("id"):
+                continue
+            # Skip non-track entries (e.g. podcast episodes).
+            if track_data.get("type") not in (None, "track"):
+                continue
+            album = track_data.get("album") or {}
+            tracks.append(
+                SpotifyTrack(
+                    id=track_data["id"],
+                    name=track_data.get("name", ""),
+                    artists=[artist["name"] for artist in track_data.get("artists", [])],
+                    album=album.get("name", ""),
+                    duration_ms=track_data.get("duration_ms", 0),
+                    external_urls=track_data.get("external_urls", {}),
+                    preview_url=track_data.get("preview_url"),
                 )
+            )
         return tracks
 
     @retry_on_exception(max_retries=3, exceptions=(requests.RequestException,))
@@ -440,14 +458,18 @@ class SpotifyAPI:
             A `SpotifyPlaylist` or `None` if the playlist cannot be retrieved.
         """
         data = self._make_request("GET", f"/playlists/{playlist_id}")
+        owner = data.get("owner") or {}
+        tracks = data.get("tracks") or {}
         return SpotifyPlaylist(
             id=data["id"],
-            name=data["name"],
+            name=data.get("name", ""),
             description=data.get("description", ""),
-            owner=data["owner"]["display_name"],
-            tracks_count=data["tracks"]["total"],
-            public=data["public"],
-            external_urls=data["external_urls"],
+            owner=owner.get("display_name", ""),
+            tracks_count=tracks.get("total", 0),
+            public=bool(data.get("public")),
+            external_urls=data.get("external_urls", {}),
+            snapshot_id=data.get("snapshot_id"),
+            owner_id=owner.get("id", ""),
         )
 
     def get_user_info(self) -> Dict[str, Any]:

@@ -103,6 +103,44 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help='Custom name for new playlist (only for new_playlist mode)'
     )
     
+    # Accounts command
+    accounts_parser = subparsers.add_parser(
+        'accounts', help='List stored accounts per platform'
+    )
+    accounts_parser.add_argument(
+        'platform',
+        nargs='?',
+        choices=['spotify', 'youtube'],
+        help='Optional platform to filter'
+    )
+
+    # Use command (select active account)
+    use_parser = subparsers.add_parser(
+        'use', help='Set the active account for a platform'
+    )
+    use_parser.add_argument('platform', choices=['spotify', 'youtube'], help='Platform')
+    use_parser.add_argument('account_id', help='Account id to activate (see "accounts")')
+
+    # Extract command
+    extract_parser = subparsers.add_parser(
+        'extract', help='Extract all playlists and tracks to local storage'
+    )
+    extract_parser.add_argument(
+        'platform',
+        choices=['spotify', 'youtube'],
+        help='Platform to extract'
+    )
+
+    # Update command
+    update_parser = subparsers.add_parser(
+        'update', help='Incrementally update the local library (only changed playlists)'
+    )
+    update_parser.add_argument(
+        'platform',
+        choices=['spotify', 'youtube'],
+        help='Platform to update'
+    )
+
     # Search command
     search_parser = subparsers.add_parser('search', help='Search for tracks')
     search_parser.add_argument(
@@ -172,6 +210,18 @@ def execute_command(args: argparse.Namespace) -> None:
                 args.name
             )
         
+        elif args.command == 'accounts':
+            cli.list_accounts(args.platform)
+
+        elif args.command == 'use':
+            cli.use_account(args.platform, args.account_id)
+
+        elif args.command == 'extract':
+            cli.extract_library(args.platform)
+
+        elif args.command == 'update':
+            cli.update_library(args.platform)
+
         elif args.command == 'search':
             cli.search_tracks(args.platform, args.query)
         
