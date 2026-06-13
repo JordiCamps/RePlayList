@@ -88,6 +88,44 @@ class RePlayListCLI:
             print(f"Warning: Could not save tokens: {e}")
             logger.warning(f"Failed to save tokens: {e}")
     
+    def _ensure_fresh(self, platform: str, account_id: Optional[str] = None) -> None:
+        """
+        Refresh an account's access token if it has expired.
+
+        Uses the stored refresh_token to obtain a new access token (no browser
+        needed) and persists it. No-op if the token is still valid or there is
+        no refresh token.
+
+        Args:
+            platform: Platform name ('spotify' or 'youtube')
+            account_id: Account id (defaults to the active account)
+        """
+        acc_id = account_id or self.config.get_active(platform)
+        if not acc_id or not self.config.is_expired(platform, acc_id):
+            return
+        account = self.config.get_account(platform, acc_id) or {}
+        refresh_token = account.get('refresh_token')
+        if not refresh_token:
+            return
+        from replaylist.auth import auth_manager
+        provider = auth_manager.spotify_auth if platform.lower() == 'spotify' else auth_manager.youtube_auth
+        try:
+            result = provider.refresh_access_token(refresh_token)
+            if result.success and result.access_token:
+                self.config.update_token(
+                    platform,
+                    acc_id,
+                    access_token=result.access_token,
+                    refresh_token=result.refresh_token or refresh_token,
+                    expires_in=result.expires_in,
+                )
+                self._save_tokens()
+                print(f"Refreshed {platform} token for {acc_id}.")
+            else:
+                print(f"Token refresh failed for {platform} ({acc_id}): {result.error}. Re-authenticate with 'auth {platform}'.")
+        except Exception as e:  # noqa: BLE001
+            print(f"Token refresh error for {platform} ({acc_id}): {e}")
+
     def authenticate_platform(self, platform: str) -> bool:
         """
         Authenticate with a platform.
@@ -200,6 +238,8 @@ class RePlayListCLI:
         Raises:
             Exception: If authentication fails or transfer fails
         """
+        self._ensure_fresh(source_platform, source_account)
+        self._ensure_fresh(target_platform, target_account)
         self.transfer_handler.transfer_playlist(
             source_platform, source_playlist_id, target_platform,
             target_playlist_id, mode, custom_name, source_account, target_account
@@ -283,6 +323,8 @@ class RePlayListCLI:
         from replaylist.youtube import YouTubeAPI
         from replaylist.transfer import YouTubeAccountCopier
 
+        self._ensure_fresh('youtube', from_account)
+        self._ensure_fresh('youtube', to_account)
         source_token = self.config.get_token('youtube', from_account)
         target_token = self.config.get_token('youtube', to_account)
         if not source_token:
@@ -337,6 +379,8 @@ class RePlayListCLI:
         from replaylist.youtube import YouTubeAPI
         from replaylist.transfer import SpotifyToYouTubeMigrator
 
+        self._ensure_fresh('spotify', source_account)
+        self._ensure_fresh('youtube', target_account)
         spotify_token = self.config.get_token('spotify', source_account)
         youtube_token = self.config.get_token('youtube', target_account)
         if not spotify_token:
@@ -384,6 +428,7 @@ class RePlayListCLI:
             platform: Platform name ('spotify' or 'youtube')
             account: Account id to extract (defaults to the active account)
         """
+        self._ensure_fresh(platform, account)
         self.store_handler.extract(platform, account)
 
     def update_library(self, platform: str, account: Optional[str] = None) -> None:
@@ -398,6 +443,7 @@ class RePlayListCLI:
             platform: Platform name ('spotify' or 'youtube')
             account: Account id to update (defaults to the active account)
         """
+        self._ensure_fresh(platform, account)
         self.store_handler.update(platform, account)
 
     def search_tracks(self, platform: str, query: str) -> None:

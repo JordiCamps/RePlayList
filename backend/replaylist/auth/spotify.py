@@ -106,4 +106,30 @@ class SpotifyAuth:
             logger.error(f"Unexpected error in Spotify auth: {exc}")
             return AuthResult(success=False, error=f"Authentication failed: {exc}")
 
+    def refresh_access_token(self, refresh_token: str) -> AuthResult:
+        """Obtain a new access token from a refresh token.
+
+        Spotify may omit a new refresh token, in which case the existing one
+        remains valid; the caller should keep it.
+        """
+        try:
+            data = {
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_id": self.config.client_id,
+                "client_secret": self.config.client_secret,
+            }
+            response = requests.post(self.TOKEN_URL, data=data)
+            response.raise_for_status()
+            token_data: Dict[str, Any] = response.json()
+            return AuthResult(
+                success=True,
+                access_token=token_data["access_token"],
+                refresh_token=token_data.get("refresh_token"),
+                expires_in=token_data.get("expires_in"),
+            )
+        except requests.RequestException as exc:
+            logger.error(f"Spotify token refresh failed: {exc}")
+            return AuthResult(success=False, error=f"Token refresh failed: {exc}")
+
 

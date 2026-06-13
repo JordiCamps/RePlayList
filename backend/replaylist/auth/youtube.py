@@ -102,4 +102,30 @@ class YouTubeAuth:
             logger.error(f"Unexpected error in YouTube auth: {exc}")
             return AuthResult(success=False, error=f"Authentication failed: {exc}")
 
+    def refresh_access_token(self, refresh_token: str) -> AuthResult:
+        """Obtain a new access token from a refresh token.
+
+        Google does not return a new refresh token on refresh; the existing one
+        stays valid and should be retained by the caller.
+        """
+        try:
+            data = {
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_id": self.config.client_id,
+                "client_secret": self.config.client_secret,
+            }
+            response = requests.post(self.TOKEN_URL, data=data)
+            response.raise_for_status()
+            token_data: Dict[str, Any] = response.json()
+            return AuthResult(
+                success=True,
+                access_token=token_data["access_token"],
+                refresh_token=token_data.get("refresh_token"),
+                expires_in=token_data.get("expires_in"),
+            )
+        except requests.RequestException as exc:
+            logger.error(f"YouTube token refresh failed: {exc}")
+            return AuthResult(success=False, error=f"Token refresh failed: {exc}")
+
 

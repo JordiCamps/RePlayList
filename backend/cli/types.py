@@ -82,12 +82,57 @@ class CLIConfig:
 
     def get_token(self, platform: str, account_id: Optional[str] = None) -> Optional[str]:
         """Return an access token for a platform (active account unless specified)."""
+        account = self.get_account(platform, account_id)
+        return account.get("access_token") if account else None
+
+    def get_account(self, platform: str, account_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Return the stored account record (active account unless specified)."""
         bucket = self._store.get(platform.lower(), {})
         account_id = account_id or bucket.get("active")
         if not account_id:
             return None
-        account = bucket.get("accounts", {}).get(account_id)
-        return account.get("access_token") if account else None
+        return bucket.get("accounts", {}).get(account_id)
+
+    def is_expired(self, platform: str, account_id: Optional[str] = None, buffer_seconds: int = 120) -> bool:
+        """Return True if the account's access token is expired (or about to be).
+
+        Returns False when expiry is unknown, to avoid needless refresh attempts.
+        """
+        account = self.get_account(platform, account_id)
+        if not account:
+            return False
+        expires_in = account.get("expires_in")
+        saved_at = account.get("saved_at")
+        if not expires_in or not saved_at:
+            return False
+        try:
+            saved = datetime.fromisoformat(saved_at)
+        except ValueError:
+            return False
+        if saved.tzinfo is None:
+            saved = saved.replace(tzinfo=timezone.utc)
+        age = (datetime.now(timezone.utc) - saved).total_seconds()
+        return age >= (expires_in - buffer_seconds)
+
+    def update_token(
+        self,
+        platform: str,
+        account_id: str,
+        *,
+        access_token: str,
+        refresh_token: Optional[str] = None,
+        expires_in: Optional[int] = None,
+    ) -> None:
+        """Update an existing account's access token (e.g. after a refresh)."""
+        account = self.get_account(platform, account_id)
+        if account is None:
+            return
+        account["access_token"] = access_token
+        if refresh_token:
+            account["refresh_token"] = refresh_token
+        if expires_in is not None:
+            account["expires_in"] = expires_in
+        account["saved_at"] = datetime.now(timezone.utc).isoformat()
 
     # --- serialization ---
     def to_dict(self) -> Dict[str, Any]:
