@@ -107,24 +107,40 @@ class RePlayListCLI:
         refresh_token = account.get('refresh_token')
         if not refresh_token:
             return
+
+        import time as _time
         from replaylist.auth import auth_manager
         provider = auth_manager.spotify_auth if platform.lower() == 'spotify' else auth_manager.youtube_auth
-        try:
-            result = provider.refresh_access_token(refresh_token)
-            if result.success and result.access_token:
-                self.config.update_token(
-                    platform,
-                    acc_id,
-                    access_token=result.access_token,
-                    refresh_token=result.refresh_token or refresh_token,
-                    expires_in=result.expires_in,
-                )
-                self._save_tokens()
-                print(f"Refreshed {platform} token for {acc_id}.")
-            else:
-                print(f"Token refresh failed for {platform} ({acc_id}): {result.error}. Re-authenticate with 'auth {platform}'.")
-        except Exception as e:  # noqa: BLE001
-            print(f"Token refresh error for {platform} ({acc_id}): {e}")
+
+        # Retry a few times so a transient network outage (e.g. running right
+        # after boot before the network is up) does not abort the whole run.
+        last_error = None
+        for attempt in range(3):
+            try:
+                result = provider.refresh_access_token(refresh_token)
+                if result.success and result.access_token:
+                    self.config.update_token(
+                        platform,
+                        acc_id,
+                        access_token=result.access_token,
+                        refresh_token=result.refresh_token or refresh_token,
+                        expires_in=result.expires_in,
+                    )
+                    self._save_tokens()
+                    print(f"Refreshed {platform} token for {acc_id}.")
+                    return
+                last_error = result.error
+            except Exception as e:  # noqa: BLE001
+                last_error = str(e)
+            if attempt < 2:
+                _time.sleep(5)
+
+        # Fail loudly (non-zero exit) instead of silently proceeding with an
+        # expired token, so a scheduled run reports failure and can be retried.
+        raise RuntimeError(
+            f"Could not refresh {platform} token for {acc_id} after retries: {last_error}. "
+            f"Re-authenticate with 'auth {platform}'."
+        )
 
     def authenticate_platform(self, platform: str) -> bool:
         """
