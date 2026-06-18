@@ -26,6 +26,7 @@ from ..store import LibraryStore, data_dir
 from ..youtube import YouTubeAPI
 from .matching import TrackMatcher
 from .match_cache import MatchCache
+from .channel_resolver import ArtistChannelResolver, artist_key
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,8 @@ class SpotifyToYouTubeMigrator:
         self.matcher = TrackMatcher(spotify_api, youtube_api)
         self.source_store = LibraryStore("spotify", source_account_id)
         self.cache = MatchCache()
+        self.channel_resolver = ArtistChannelResolver(youtube_api)
+        self._artist_counts: Dict[str, int] = {}
         self.state_path = (
             data_dir()
             / "migrations"
@@ -170,9 +173,23 @@ class SpotifyToYouTubeMigrator:
                     # Stale cached video -> drop it and fall through to a fresh search.
                     self.cache.invalidate(spotify_id)
 
-            # status == "unknown" (or stale-hit fallback): spend a real search.
-            units += SEARCH_COST
-            video = self._search_and_cache(SpotifyTrack(**track), spotify_id)
+            # status == "unknown" (or stale-hit fallback).
+            # Phase 2: try the artist's YouTube channel pool first (amortized
+            # search). Resolution costs one search per frequent artist; matching
+            # all that artist's tracks against the pool is then free.
+            artists = track.get("artists") or []
+            primary_artist = artists[0] if artists else None
+            count = self._artist_counts.get(artist_key(primary_artist), 0)
+            video, ch_units = self.channel_resolver.find_match(
+                primary_artist, track.get("name", ""), count
+            )
+            units += ch_units
+            if video:
+                self.cache.put_match(spotify_id, video)
+            else:
+                # Fall back to a normal per-track search.
+                units += SEARCH_COST
+                video = self._search_and_cache(SpotifyTrack(**track), spotify_id)
             if not video:
                 return {"units": units, "matched": False, "added": False, "quota_hit": False}
             try:
@@ -212,6 +229,19 @@ class SpotifyToYouTubeMigrator:
             )
 
         source_playlists = self.source_store.load_playlists()
+
+        # Pre-pass: count how often each artist appears across the whole library,
+        # so the channel resolver only resolves channels worth amortizing.
+        self._artist_counts = {}
+        for pl in source_playlists:
+            cached_tracks = (self.source_store.load_tracks(pl["id"]) or {}).get("tracks", [])
+            for t in cached_tracks:
+                arts = t.get("artists") or []
+                if arts:
+                    k = artist_key(arts[0])
+                    if k:
+                        self._artist_counts[k] = self._artist_counts.get(k, 0) + 1
+
         total_tracks = 0
         total_done = 0
         processed = 0
@@ -281,6 +311,7 @@ class SpotifyToYouTubeMigrator:
                 if processed % 10 == 0:
                     self._save_state()
                     self.cache.save()
+                    self.channel_resolver.save()
                 if progress and processed % 5 == 0:
                     progress(f"{units_spent}/{unit_budget} est. units, {processed} tracks")
 
@@ -288,11 +319,13 @@ class SpotifyToYouTubeMigrator:
                 ps["completed"] = True
             self._save_state()
             self.cache.save()
+            self.channel_resolver.save()
             if quota_hit:
                 break
 
         self._save_state()
         self.cache.save()
+        self.channel_resolver.save()
         return {
             "processed": processed,
             "added": added,

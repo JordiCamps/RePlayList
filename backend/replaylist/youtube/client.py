@@ -319,6 +319,43 @@ class YouTubeAPI:
             return best, best_score
         return None, best_score
 
+    @retry_on_exception(max_retries=3, exceptions=(requests.RequestException,))
+    def search_channels(self, query: str, max_results: int = 10) -> List[Tuple[str, str]]:
+        """Search channels by name; returns a list of (channel_id, title)."""
+        params = {"part": "snippet", "q": query, "type": "channel", "maxResults": max_results}
+        data = self._make_request("GET", "/search", params=params)
+        out: List[Tuple[str, str]] = []
+        for item in data.get("items", []):
+            channel_id = item.get("id", {}).get("channelId")
+            if channel_id:
+                out.append((channel_id, item.get("snippet", {}).get("title", "")))
+        return out
+
+    @retry_on_exception(max_retries=3, exceptions=(requests.RequestException,))
+    def get_uploads_playlist_id(self, channel_id: str) -> Optional[str]:
+        """Return the channel's 'uploads' playlist id (contains all its videos)."""
+        data = self._make_request("GET", "/channels", params={"part": "contentDetails", "id": channel_id})
+        items = data.get("items", [])
+        if not items:
+            return None
+        return items[0].get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
+
+    def get_channel_videos(self, channel_id: str, max_videos: int = 250) -> List[YouTubeVideo]:
+        """Enumerate up to `max_videos` of a channel's uploads (cheap: ~1 unit/page)."""
+        uploads = self.get_uploads_playlist_id(channel_id)
+        if not uploads:
+            return []
+        videos: List[YouTubeVideo] = []
+        page_token: Optional[str] = None
+        while True:
+            page, page_token = self._get_playlist_videos_page_with_token(uploads, 50, page_token)
+            videos.extend(page)
+            if not page_token or len(videos) >= max_videos:
+                break
+            import time
+            time.sleep(0.1)
+        return videos[:max_videos]
+
     def get_playlist_info(self, playlist_id: str) -> Optional[YouTubePlaylist]:
         """Get details of a playlist by ID.
 
