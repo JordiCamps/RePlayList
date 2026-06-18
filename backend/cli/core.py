@@ -377,19 +377,22 @@ class RePlayListCLI:
         self,
         source_account: str,
         target_account: str,
-        limit: int = 60,
+        max_units: int = 9500,
+        limit: Optional[int] = None,
     ) -> None:
         """
         Migrate all Spotify playlists to a YouTube account, in resumable batches.
 
-        Reads the source from the local Spotify extract, processes up to `limit`
-        tracks per run (to stay within YouTube quota), and persists progress so
-        repeated daily runs continue where they left off without redoing work.
+        Reads the source from the local Spotify extract, spends up to `max_units`
+        estimated YouTube quota units per run (cache hits are nearly free, so a
+        run can cover far more than the old fixed 60 tracks), and persists
+        progress so repeated daily runs continue without redoing work.
 
         Args:
             source_account: Spotify account id (must have been extracted).
             target_account: YouTube account id (target channel).
-            limit: Max tracks to process this run (default 60 ~= 9,000 quota units).
+            max_units: Estimated quota-unit budget per run (default 9,500 of 10,000/day).
+            limit: Optional hard cap on number of tracks this run (for small test runs).
         """
         from replaylist.spotify import SpotifyAPI
         from replaylist.youtube import YouTubeAPI
@@ -410,12 +413,13 @@ class RePlayListCLI:
             SpotifyAPI(spotify_token), YouTubeAPI(youtube_token), source_account, target_account
         )
         try:
-            print(f"Migrating Spotify ({source_account}) -> YouTube ({target_account}), up to {limit} tracks.")
-            print("Note: ~150 YouTube quota units per track (10,000/day).")
-            result = migrator.run(track_budget=limit, progress=lambda m: print(f"  {m}"))
+            cap = f", max {limit} tracks" if limit else ""
+            print(f"Migrating Spotify ({source_account}) -> YouTube ({target_account}); budget {max_units} units{cap}.")
+            print("Note: search ~100 units, insert ~50; cache hits skip the search (10,000/day).")
+            result = migrator.run(unit_budget=max_units, max_tracks=limit, progress=lambda m: print(f"  {m}"))
             print(
                 f"\nThis run: {result['processed']} processed, {result['added']} added, "
-                f"{result['failed']} unmatched/failed."
+                f"{result['failed']} unmatched/failed (~{result['units_spent']} units)."
             )
             print(
                 f"Overall: {result['total_done']}/{result['total_tracks']} tracks done, "

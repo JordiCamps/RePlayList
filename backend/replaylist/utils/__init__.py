@@ -16,6 +16,7 @@ from .validate import (
 from .decorators import retry_on_exception, rate_limit, handle_api_errors
 from .collections import chunk_list
 from .dupes import is_duplicate_track
+from .text_match import clean_title, clean_artist, fuzzy_score, char_similarity
 
 __all__ = [
     "setup_logging",
@@ -36,6 +37,10 @@ __all__ = [
     "handle_api_errors",
     "chunk_list",
     "is_duplicate_track",
+    "clean_title",
+    "clean_artist",
+    "fuzzy_score",
+    "char_similarity",
 ]
 
 

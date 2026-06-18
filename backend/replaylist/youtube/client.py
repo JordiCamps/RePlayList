@@ -24,10 +24,15 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 
 from ..utils import handle_api_errors, rate_limit, retry_on_exception, setup_logging
+from ..utils import clean_title, clean_artist, fuzzy_score
 from .types import YouTubePlaylist, YouTubeVideo
 
 
 logger = setup_logging()
+
+# Minimum score for a candidate to be accepted as a match (same scale and
+# threshold as SpotifyAPI._score_tracks: title weight x2 + artist, 0..300).
+MATCH_THRESHOLD = 15
 
 
 class YouTubeAPI:
@@ -272,18 +277,47 @@ class YouTubeAPI:
     def find_video_by_metadata(self, title: str, artist: str, duration: str = "") -> Optional[YouTubeVideo]:
         """Heuristic search for a video using title and optional artist hint.
 
-        Strategy:
-            Combines the title with optional channel/artist hints to produce a
-            ranked set of candidates, returning the top result.
+        Fetches up to 50 candidates (one search.list call, fixed cost) and
+        scores them by title/artist similarity, returning the best match above
+        the threshold instead of blindly taking the first relevance result.
         """
-        query_parts = [title]
-        if artist:
-            query_parts.append(artist)
-        query = " ".join(query_parts)
-        videos = self.search_videos(query, max_results=20)
+        video, _score = self.find_video_by_metadata_scored(title, artist)
+        return video
+
+    def find_video_by_metadata_scored(self, title: str, artist: str) -> Tuple[Optional[YouTubeVideo], int]:
+        """Like find_video_by_metadata but also returns the match score.
+
+        Returns (best_video, score) or (None, best_score) when nothing clears
+        the threshold.
+        """
+        query = " ".join(p for p in (title, artist) if p)
+        videos = self.search_videos(query, max_results=50)
         if not videos:
-            return None
-        return videos[0]
+            return None, 0
+
+        target_title = clean_title(title)
+        target_artist = clean_artist(artist)
+        best: Optional[YouTubeVideo] = None
+        best_score = 0
+        for video in videos:
+            cand_title = clean_title(video.title)
+            title_score = max(
+                fuzzy_score(cand_title, target_title),
+                fuzzy_score(video.title, target_title),
+            )
+            # The uploader channel is usually the artist (or "Artist - Topic").
+            artist_score = max(
+                fuzzy_score(video.channel_title, target_artist),
+                fuzzy_score(cand_title, target_artist),
+                fuzzy_score(video.title, target_artist),
+            )
+            score = title_score * 2 + artist_score
+            if score > best_score:
+                best_score = score
+                best = video
+        if best is not None and best_score >= MATCH_THRESHOLD:
+            return best, best_score
+        return None, best_score
 
     def get_playlist_info(self, playlist_id: str) -> Optional[YouTubePlaylist]:
         """Get details of a playlist by ID.

@@ -26,6 +26,8 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from ..utils import handle_api_errors, rate_limit, retry_on_exception, setup_logging
+from ..utils import clean_title as _clean_title_util, clean_artist as _clean_artist_util
+from ..utils import fuzzy_score as _fuzzy_score_util, char_similarity as _char_similarity_util
 from .types import SpotifyPlaylist, SpotifyTrack
 
 
@@ -297,66 +299,12 @@ class SpotifyAPI:
         return None
 
     def _clean_title(self, title: str) -> str:
-        """Normalize a title by stripping common noise words and suffixes.
-
-        Removes markers like "(official video)", "(lyrics)", and bracketed
-        annotations, then collapses whitespace and trims punctuation.
-        """
-        import re as _re
-
-        if not title:
-            return ""
-        suffixes_to_remove = [
-            r"\s*\(official\s+video\)",
-            r"\s*\(official\s+music\s+video\)",
-            r"\s*\(lyrics\)",
-            r"\s*\(lyric\s+video\)",
-            r"\s*\(audio\)",
-            r"\s*\(official\s+audio\)",
-            r"\s*\(hq\)",
-            r"\s*\(hd\)",
-            r"\s*\(4k\)",
-            r"\s*\(remastered\)",
-            r"\s*\(remaster\)",
-            r"\s*\(live\)",
-            r"\s*\(live\s+performance\)",
-            r"\s*\(acoustic\)",
-            r"\s*\(cover\)",
-            r"\s*\(ft\.\?\s+.*?\)",
-            r"\s*\(feat\.\?\s+.*?\)",
-            r"\s*\(featuring\s+.*?\)",
-            r"\s*\[.*?\]",
-            r"\s*\(.*?version.*?\)",
-            r"\s*\(.*?edit.*?\)",
-            r"\s*\(.*?mix.*?\)",
-        ]
-        cleaned = title.strip()
-        for pattern in suffixes_to_remove:
-            cleaned = _re.sub(pattern, "", cleaned, flags=_re.IGNORECASE)
-        cleaned = _re.sub(r"\s+", " ", cleaned).strip().strip(".,;:!?")
-        return cleaned
+        """Normalize a title (delegates to the shared text-match util)."""
+        return _clean_title_util(title)
 
     def _clean_artist(self, artist: str) -> str:
-        """Normalize an artist name by stripping channel decorations.
-
-        Removes suffixes like "(official)", "(vevo)", and similar markers.
-        """
-        import re as _re
-
-        if not artist:
-            return ""
-        suffixes_to_remove = [
-            r"\s*\(official\)",
-            r"\s*\(official\s+channel\)",
-            r"\s*\(music\)",
-            r"\s*\(vevo\)",
-            r"\s*\(topic\)",
-            r"\s*\[.*?\]",
-        ]
-        cleaned = artist.strip()
-        for pattern in suffixes_to_remove:
-            cleaned = _re.sub(pattern, "", cleaned, flags=_re.IGNORECASE)
-        return _re.sub(r"\s+", " ", cleaned).strip()
+        """Normalize an artist name (delegates to the shared text-match util)."""
+        return _clean_artist_util(artist)
 
     def _extract_main_title(self, title: str) -> str:
         """Remove common separators/prefixes, then clean the result.
@@ -400,56 +348,12 @@ class SpotifyAPI:
         return best_track if best_score >= 15 else None
 
     def _calculate_fuzzy_score(self, text1: str, text2: str) -> int:
-        """Compute a fuzzy match score using word and character similarity.
-
-        Combines Jaccard word overlap (70%) with normalized Levenshtein-based
-        character similarity (30%). Returns an integer 0..100.
-        """
-        if not text1 or not text2:
-            return 0
-        t1 = text1.lower().strip()
-        t2 = text2.lower().strip()
-        if t1 == t2:
-            return 100
-        if t1 in t2 or t2 in t1:
-            return 80
-        words1 = set(t1.split())
-        words2 = set(t2.split())
-        if not words1 or not words2:
-            return 0
-        inter = words1 & words2
-        union = words1 | words2
-        word_similarity = len(inter) / len(union) if union else 0
-        char_similarity = self._calculate_char_similarity(t1, t2)
-        return int((word_similarity * 70) + (char_similarity * 30))
+        """Fuzzy match score 0..100 (delegates to the shared text-match util)."""
+        return _fuzzy_score_util(text1, text2)
 
     def _calculate_char_similarity(self, text1: str, text2: str) -> float:
-        """Compute normalized Levenshtein-based similarity between two strings.
-
-        Returns a float in 0..1 where 1 represents identical strings.
-        """
-        if not text1 or not text2:
-            return 0.0
-        def levenshtein_distance(s1: str, s2: str) -> int:
-            if len(s1) < len(s2):
-                return levenshtein_distance(s2, s1)
-            if len(s2) == 0:
-                return len(s1)
-            previous_row = list(range(len(s2) + 1))
-            for i, c1 in enumerate(s1):
-                current_row = [i + 1]
-                for j, c2 in enumerate(s2):
-                    insertions = previous_row[j + 1] + 1
-                    deletions = current_row[j] + 1
-                    substitutions = previous_row[j] + (c1 != c2)
-                    current_row.append(min(insertions, deletions, substitutions))
-                previous_row = current_row
-            return previous_row[-1]
-        distance = levenshtein_distance(text1, text2)
-        max_len = max(len(text1), len(text2))
-        if max_len == 0:
-            return 1.0
-        return 1.0 - (distance / max_len)
+        """Char similarity 0..1 (delegates to the shared text-match util)."""
+        return _char_similarity_util(text1, text2)
 
     def get_playlist_info(self, playlist_id: str) -> Optional[SpotifyPlaylist]:
         """Get playlist metadata by ID.

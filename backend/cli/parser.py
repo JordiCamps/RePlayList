@@ -165,8 +165,10 @@ def create_argument_parser() -> argparse.ArgumentParser:
                                 help='Spotify account id (must be extracted first)')
     migrate_parser.add_argument('--target-account', required=True,
                                 help='Target YouTube account id')
-    migrate_parser.add_argument('--limit', type=int, default=60,
-                                help='Max tracks to process this run (default 60 ~= 9,000 quota units)')
+    migrate_parser.add_argument('--max-units', type=int, default=9500,
+                                help='Estimated YouTube quota-unit budget per run (default 9500 of 10,000/day)')
+    migrate_parser.add_argument('--limit', type=int, default=None,
+                                help='Optional hard cap on number of tracks this run (for small test runs)')
 
     # YouTube account-to-account copy command
     ytcopy_parser = subparsers.add_parser(
@@ -268,7 +270,7 @@ def execute_command(args: argparse.Namespace) -> None:
 
         elif args.command == 'migrate':
             cli.migrate_spotify_to_youtube(
-                args.source_account, args.target_account, args.limit
+                args.source_account, args.target_account, args.max_units, args.limit
             )
 
         elif args.command == 'yt-copy':
